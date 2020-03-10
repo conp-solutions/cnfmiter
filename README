@@ -1,0 +1,10 @@
+cnfmiter, Norbert Manthey
+
+This tool allows to produce a formula with is unsatisfiable in case the 2 given
+formulas as equivalent, i.e. all models are the same for all variable in both
+formulas.
+
+Usage:
+
+# Read 2 (gzipped) CNF files, and print the miter formula to stdout
+./cnfmiter formula1.cnf(.gz) formula2.cnf(.gz) > miter.cnf
