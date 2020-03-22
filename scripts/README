@@ -1,0 +1,17 @@
+This directory provides tools to create CNF miters based on simplified CNF
+formulas. The CNF is simplified with coprocessor, and the cnfmiter tool is used
+to create a miter formula.
+
+### Preparation
+
+The dependencies need to be build. Run the following script to get the
+dependencies built:
+
+ ./scripts/build-simplify-miter-dependencies.sh
+
+### Creating a miter CNF
+
+Once the dependencies are available, a miter can be created with the following
+call. The script can read and write gzipped formulas.
+
+ ./scripts/create-simplified-miter.sh -o output.cnf[.gz] input.cnf[.gz]
