@@ -1,0 +1,86 @@
+\documentclass[conference]{IEEEtran}
+% packages
+\usepackage{xspace}
+\usepackage{hyperref}
+\usepackage{todonotes}
+\usepackage{tikz}
+\usepackage[utf8]{inputenc}
+
+\def\CC{{C\nolinebreak[4]\hspace{-.05em}\raisebox{.4ex}{\tiny\bf ++}}}
+\def\ea{\,et\,al.\ }
+
+\begin{document}
+	
+% paper title
+\title{CNFMiter}
+
+% author names and affiliations
+% use a multiple column layout for up to three different
+% affiliations
+\author{
+\IEEEauthorblockN{Norbert Manthey}
+\IEEEauthorblockA{nmanthey@conp-solutions.com\\Dresden, Germany}
+}
+
+\maketitle
+
+\def\coprocessor{\textsc{Coprocessor}\xspace}
+
+% the abstract is optional
+\begin{abstract}
+This document describes the CNFMiter tool, as well as the benchmarks that have been submitted to the SAT competition 2020, namely miter formulas of CNFs used for model counting, combined with a simplified, equivalent, variant.
+\end{abstract}
+
+\section{Introduction}
+
+model counting uses CNF. We have CNF simplifications. number of models stays the same in case we only use equivalence preserving modifications (and drop defined variables -- gates -- but that's harder to encode).
+To check whether CNF simplifications actually preserve equivalence, create miter CNFs.
+
+\section{Creating Miter CNFs}
+
+The input for the cnfmiter tool are two uncompressed CNF files with the formulas $F$ and $G$.
+For both formulas, a new variable $f_i$ is introduced for each clause $C_i$ in the formula $F$ that is encoded to be $\top$ when the current interpretation satisfies the clause.
+Note, the number of clauses in the formulas $F$ and $G$ can be different.
+
+\[F' := \bigvee_{C_i \in F} f_i \leftrightarrow C_i \]
+
+\[G' := \bigvee_{D_j \in G} g_j \leftrightarrow D_j \]
+
+Next, we introduce a variable $s_F$ that represents the information whether all clauses in a formula $F$ are satisfied, again, for both formulas.
+
+\[S_F := s_F \leftrightarrow \bigwedge_{C_i \in F} f_i \]
+
+\[S_G := s_G \leftrightarrow \bigwedge_{D_j \in G} g_j \]
+
+Finally, we need to make sure that the two formulas cannot be satisfied at the same time,
+which gives us the final miter formula:
+
+\[ M := F' \land G' \land S_F \land S_G \land (s_F \not \leftrightarrow s_G) \]
+
+\noindent
+In case the two formulas $F$ ad $G$ are equivalent, the resulting miter formula $M$ is unsatisfiable.
+In case the variables in $F$ and $G$ do not match, the resulting formula $M$ is satisfiable.
+
+\section{The Submitted Benchmark}
+
+The presented approach to check formulas for equivalence allows to check whether CNF simplifier implementations are buggy, i.e. when being combined with a CNF fuzzer like~\cite{BrummayerB:2009}.
+
+The submitted miter formulas take formulas as input, that come from the model counting domain.
+CNFs without variable weights have been taken from \url{http://www.cs.cornell.edu/~sabhar/software/benchmarks/IJCAI07-suite.tgz} and \url{http://cs.stanford.edu/~ermon/code/nips2011_benchmark.zip}.
+
+Each formula has been attempted to be simplified, such that the resulting formula is logically equivalent, and all variables that have been present in the original formula are present in the result again.
+
+For CNF simplification, we chose the latest version of \coprocessor~\cite{coprocessor2} default simplfications.
+The simplifications are subsumption, self-subsuming resolution, equivalent literal elimination~\cite{ee-withSCC}, reasoning on the binray implication graph~\cite{DBLP:conf/sat/HeuleJB11}, as well as deducing units and equivalences from XORs, and reason about cardinality constraints~\cite{MlazyCard}.
+All techniques are setup to preserve all variables, e.g. eliminated equivalences and the resulting formula rewriting are performed, but before emitting the formula, the equivalence relations are encoded to the CNF again.
+
+\section{Availability}
+
+The source of the tool, as well as scripts to build the dependency coprocessor and create simplification miter formulas is publicly available under the MIT license at \url{https://github.com/conp-solutions/cnfmiter}.
+The file \emph{scripts/README} in the repository explains how the submitted benchmarks have been created.
+
+
+\bibliographystyle{IEEEtranS}
+\bibliography{local}
+
+\end{document}
