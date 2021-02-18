@@ -1,0 +1,17 @@
+name: Build and Test
+
+on: [push]
+
+jobs:
+  Linux:
+
+    runs-on: ubuntu-18.04
+
+    steps:
+    - name: Install Packages
+      run: sudo apt-get install picosat
+
+    - uses: actions/checkout@v1
+
+    - name: build and test
+      run: ./examples/run.sh
