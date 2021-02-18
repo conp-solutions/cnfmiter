@@ -70,6 +70,59 @@ void generate_formula_miter(Formula &formula, const Formula &input1, const Formu
     std::cerr << "c miter has " << formula.nVars() << " variables and " << formula.clauses.size() << " clauses" << std::endl;
 }
 
+/// add offset to all variables in formula, that are greater than largest_input_variable
+void rewrite_variable_range(Formula &formula, Var largest_input_variable, int offset)
+{
+    if (offset == 0) return;
+    if (largest_input_variable <= formula.nVars()) return;
+
+    for (auto &c : formula.clauses) {
+        for (size_t i = 0; i < c.size(); ++i) {
+            if (var(c[i]) > largest_input_variable) {
+                c[i] = mkLit(var(c[i]) + offset, sign(c[i]));
+            }
+        }
+    }
+
+    int oldVars = formula.nVars();
+    while (formula.nVars() < oldVars + offset) formula.newVar();
+}
+
+std::vector<std::vector<Lit>> get_definition_clauses(Formula &f1, int largest_input_variable)
+{
+    std::vector<std::vector<Lit>> l2r;
+
+    for (const auto &c : f1.clauses) {
+        bool move = false;
+        for (size_t i = 0; i < c.size(); ++i) {
+            if (var(c[i]) >= largest_input_variable) {
+                move = true;
+                break;
+            }
+        }
+        if (move) l2r.push_back(c);
+    }
+
+    return l2r;
+}
+
+/// make sure variables above largest_input_variables are similarly dependent in both formulas
+/// for miters: assume variable sets being mutually exclusive
+void exchange_definition_clauses(Formula &f1, Formula &f2, int largest_input_variable)
+{
+    std::vector<std::vector<Lit>> l2r, r2l;
+
+    // get all clauses in f1 and f2 that have variable beyond largest variable
+    l2r = get_definition_clauses(f1, largest_input_variable);
+    std::cerr << "c extracted " << l2r.size() << " clauses from f1" << std::endl;
+    r2l = get_definition_clauses(f2, largest_input_variable);
+    std::cerr << "c extracted " << r2l.size() << " clauses from f2" << std::endl;
+
+    // add the clauses mutually to each formula
+    for (const auto &c : l2r) f2.addClause_(c);
+    for (const auto &c : r2l) f1.addClause_(c);
+}
+
 void print_formula(Formula &f, std::string s)
 {
     std::cout << "c CNFmiter, Norbert Manthey, 2020" << std::endl;
@@ -151,6 +204,23 @@ int main(int argc, char **argv)
     Formula miter;
 
     Var maxV = f1.nVars() > f2.nVars() ? f1.nVars() : f2.nVars();
+    if (tseitin > 0) {
+        int offset = tseitin;
+        offset = maxV > tseitin ? maxV - tseitin : 0;
+        std::cerr << "c offset " << offset << " tseitin: " << tseitin << " maxV: " << maxV << std::endl;
+        assert(offset == 0 || f2.nVars() <= tseitin || f2.nVars() + offset > f1.nVars());
+
+        rewrite_variable_range(f2, tseitin, offset);
+
+        maxV = f1.nVars() > f2.nVars() ? f1.nVars() : f2.nVars();
+
+        while (f1.nVars() < maxV) f1.newVar();
+        while (f2.nVars() < maxV) f2.newVar();
+
+        exchange_definition_clauses(f1, f2, tseitin);
+    }
+
+    maxV = f1.nVars() > f2.nVars() ? f1.nVars() : f2.nVars();
     while (miter.nVars() < maxV) miter.newVar();
 
     std::cerr << "c Miter base formulas reserved " << miter.nVars() << " variables" << std::endl;
