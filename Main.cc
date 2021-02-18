@@ -201,6 +201,15 @@ int main(int argc, char **argv)
     std::cerr << "c Parsed formulas 1 with " << f1.nVars() << " vars and " << f1.clauses.size()
               << " and formulas 2 with " << f2.nVars() << " vars and " << f2.clauses.size() << std::endl;
 
+    if (randmom_drop > 0) {
+        srand(1234);
+        for (int i = 0; i < randmom_drop && f1.clauses.size() > 0; ++i) {
+            size_t p = rand() % f1.clauses.size();
+            f1.clauses[p] = f1.clauses.back();
+            f1.clauses.pop_back();
+        }
+    }
+
     Formula miter;
 
     Var maxV = f1.nVars() > f2.nVars() ? f1.nVars() : f2.nVars();
