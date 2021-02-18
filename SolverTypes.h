@@ -36,8 +36,8 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include "IntTypes.h"
 
-#include <vector>
 #include <iostream>
+#include <vector>
 
 namespace CNFMITER
 {
@@ -103,7 +103,7 @@ const Lit lit_Error = { -1 }; // }
 
 inline std::ostream &operator<<(std::ostream &out, const Lit &val)
 {
-    out << (sign(val) ? -var(val)-1 : var(val)+1) << std::flush;
+    out << (sign(val) ? -var(val) - 1 : var(val) + 1) << std::flush;
     return out;
 }
 
@@ -154,8 +154,7 @@ class lbool
 inline int toInt(lbool l) { return l.value; }
 inline lbool toLbool(int v) { return lbool((uint8_t)v); }
 
-template <class T>
-inline std::ostream &operator<<(std::ostream &out, const std::vector<T> &cls)
+template <class T> inline std::ostream &operator<<(std::ostream &out, const std::vector<T> &cls)
 {
     for (int i = 0; i < cls.size(); ++i) {
         out << cls[i] << " ";
@@ -164,21 +163,22 @@ inline std::ostream &operator<<(std::ostream &out, const std::vector<T> &cls)
     return out;
 }
 
-class Formula {
+class Formula
+{
     Var vars = 0;
-  public:
-    std::vector< std::vector<Lit> > clauses;
 
-    int nVars() const {return vars;}    // The current number of variables.
-    Var newVar() {
+    public:
+    std::vector<std::vector<Lit>> clauses;
+
+    int nVars() const { return vars; } // The current number of variables.
+    Var newVar()
+    {
         int v = nVars();
-        vars ++;
+        vars++;
         return v;
     }; // Add a new variable
 
-    void addClause_(std::vector<Lit>& clause) {
-        clauses.push_back(clause);
-    }
+    void addClause_(const std::vector<Lit> &clause) { clauses.push_back(clause); }
 };
 
 //=================================================================================================

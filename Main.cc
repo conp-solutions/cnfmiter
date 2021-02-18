@@ -85,16 +85,40 @@ void print_formula(Formula &f, std::string s)
 
 int main(int argc, char **argv)
 {
+    int opt;
+    int tseitin = 0;
+    int randmom_drop = 0;
     std::cerr << "c CNFmiter generates a CNF formula " << std::endl
               << "c which is unsatisfiable, if the given 2 formulas are equivalent" << std::endl;
 
-    if (argc < 2) {
+
+    // Retrieve the options:
+    while ((opt = getopt(argc, argv, "r:t:")) != -1) { // for each option...
+        switch (opt) {
+        case 'r':
+            randmom_drop = atoi(optarg);
+            std::cerr << "c randomly drop " << randmom_drop << " clauses from first formula" << std::endl;
+            break;
+        case 't':
+            tseitin = atoi(optarg);
+            std::cerr << "c set tseitin variable to " << tseitin << std::endl;
+            break;
+        case '?': // unknown option...
+            std::cerr << "c unknown option: '" << char(optopt) << "'!" << std::endl;
+            exit(1);
+            break;
+        }
+    }
+
+    if (optind + 2 != argc) {
         std::cerr << "not enough parameters, abort!" << std::endl;
         return 1;
     }
 
-    gzFile in1 = gzopen(argv[1], "rb");
-    gzFile in2 = gzopen(argv[2], "rb");
+    std::string fn1 = (argv[optind + 0]);
+    std::string fn2 = (argv[optind + 1]);
+    gzFile in1 = gzopen(fn1.c_str(), "rb");
+    gzFile in2 = gzopen(fn2.c_str(), "rb");
 
     if (!in1) {
         std::cerr << "failed to open first file, abort!" << std::endl;
@@ -102,6 +126,14 @@ int main(int argc, char **argv)
     }
     if (!in2) {
         std::cerr << "failed to open second file, abort!" << std::endl;
+        return 1;
+    }
+    if (tseitin < 0) {
+        std::cerr << "tseitin variable negative, abort" << std::endl;
+        return 1;
+    }
+    if (randmom_drop < 0) {
+        std::cerr << "random_drop value negative, abort" << std::endl;
         return 1;
     }
 
@@ -125,13 +157,16 @@ int main(int argc, char **argv)
 
     generate_formula_miter(miter, f1, f2);
 
-    std::string fn1 = (argv[1]);
-    std::string fn2 = (argv[2]);
     std::size_t found = fn1.rfind("/");
     if (found != std::string::npos) fn1 = fn1.erase(0, found + 1);
     found = fn2.rfind("/");
     if (found != std::string::npos) fn2 = fn2.erase(0, found + 1);
-    print_formula(miter, fn1 + " and " + fn2);
+
+    std::stringstream s;
+    s << fn1 << " and " << fn2;
+    if (tseitin != 0) s << " with tseitin base variable " << tseitin;
+    if (randmom_drop) s << " with randomly dropping " << randmom_drop;
+    print_formula(miter, s.str());
 
     return 0;
 }
