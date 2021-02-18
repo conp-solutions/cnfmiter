@@ -8,3 +8,21 @@ Usage:
 
 # Read 2 (gzipped) CNF files, and print the miter formula to stdout
 ./cnfmiter formula1.cnf(.gz) formula2.cnf(.gz) > miter.cnf
+
+
+In case the CNFs contain an input that uses X variables, and one or both
+formulas furthermore introduce auxiliary variables, e.g. because of the Tseitin
+encoding, then this tool can still compare the two formulas, by handling the
+auxiliary variables special.
+
+# compare the Tseiting encoding of some input with X variables in the input
+./cnfmiter -t X formula1.cnf(.gz) formula2.cnf(.gz) > miter.cnf
+
+
+As miter formulas for working comparisons result in unsatisfiable formulas, we
+also want to be able to generate similarly structured satisfiable formulas. This
+can be achieved by dropping some clauses from one of the input formulas. The
+following command allows to randomly drop N clauses from the first formula:
+
+# drop N clauses from the first formula before creating the miter formula
+./cnfmiter -r N formula1.cnf(.gz) formula2.cnf(.gz) > miter.cnf
