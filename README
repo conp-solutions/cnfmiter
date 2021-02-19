@@ -15,7 +15,7 @@ formulas furthermore introduce auxiliary variables, e.g. because of the Tseitin
 encoding, then this tool can still compare the two formulas, by handling the
 auxiliary variables special.
 
-# compare the Tseiting encoding of some input with X variables in the input
+# Compare the Tseitin encoding of some input with X variables in the input
 ./cnfmiter -t X formula1.cnf(.gz) formula2.cnf(.gz) > miter.cnf
 
 
