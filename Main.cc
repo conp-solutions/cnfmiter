@@ -70,6 +70,59 @@ void generate_formula_miter(Formula &formula, const Formula &input1, const Formu
     std::cerr << "c miter has " << formula.nVars() << " variables and " << formula.clauses.size() << " clauses" << std::endl;
 }
 
+/// add offset to all variables in formula, that are greater than largest_input_variable
+void rewrite_variable_range(Formula &formula, Var largest_input_variable, int offset)
+{
+    if (offset == 0) return;
+    if (largest_input_variable <= formula.nVars()) return;
+
+    for (auto &c : formula.clauses) {
+        for (size_t i = 0; i < c.size(); ++i) {
+            if (var(c[i]) > largest_input_variable) {
+                c[i] = mkLit(var(c[i]) + offset, sign(c[i]));
+            }
+        }
+    }
+
+    int oldVars = formula.nVars();
+    while (formula.nVars() < oldVars + offset) formula.newVar();
+}
+
+std::vector<std::vector<Lit>> get_definition_clauses(Formula &f1, int largest_input_variable)
+{
+    std::vector<std::vector<Lit>> l2r;
+
+    for (const auto &c : f1.clauses) {
+        bool move = false;
+        for (size_t i = 0; i < c.size(); ++i) {
+            if (var(c[i]) >= largest_input_variable) {
+                move = true;
+                break;
+            }
+        }
+        if (move) l2r.push_back(c);
+    }
+
+    return l2r;
+}
+
+/// make sure variables above largest_input_variables are similarly dependent in both formulas
+/// for miters: assume variable sets being mutually exclusive
+void exchange_definition_clauses(Formula &f1, Formula &f2, int largest_input_variable)
+{
+    std::vector<std::vector<Lit>> l2r, r2l;
+
+    // get all clauses in f1 and f2 that have variable beyond largest variable
+    l2r = get_definition_clauses(f1, largest_input_variable);
+    std::cerr << "c extracted " << l2r.size() << " clauses from f1" << std::endl;
+    r2l = get_definition_clauses(f2, largest_input_variable);
+    std::cerr << "c extracted " << r2l.size() << " clauses from f2" << std::endl;
+
+    // add the clauses mutually to each formula
+    for (const auto &c : l2r) f2.addClause_(c);
+    for (const auto &c : r2l) f1.addClause_(c);
+}
+
 void print_formula(Formula &f, std::string s)
 {
     std::cout << "c CNFmiter, Norbert Manthey, 2020" << std::endl;
@@ -85,16 +138,40 @@ void print_formula(Formula &f, std::string s)
 
 int main(int argc, char **argv)
 {
+    int opt;
+    int tseitin = 0;
+    int randmom_drop = 0;
     std::cerr << "c CNFmiter generates a CNF formula " << std::endl
               << "c which is unsatisfiable, if the given 2 formulas are equivalent" << std::endl;
 
-    if (argc < 2) {
+
+    // Retrieve the options:
+    while ((opt = getopt(argc, argv, "r:t:")) != -1) { // for each option...
+        switch (opt) {
+        case 'r':
+            randmom_drop = atoi(optarg);
+            std::cerr << "c randomly drop " << randmom_drop << " clauses from first formula" << std::endl;
+            break;
+        case 't':
+            tseitin = atoi(optarg);
+            std::cerr << "c set tseitin variable to " << tseitin << std::endl;
+            break;
+        case '?': // unknown option...
+            std::cerr << "c unknown option: '" << char(optopt) << "'!" << std::endl;
+            exit(1);
+            break;
+        }
+    }
+
+    if (optind + 2 != argc) {
         std::cerr << "not enough parameters, abort!" << std::endl;
         return 1;
     }
 
-    gzFile in1 = gzopen(argv[1], "rb");
-    gzFile in2 = gzopen(argv[2], "rb");
+    std::string fn1 = (argv[optind + 0]);
+    std::string fn2 = (argv[optind + 1]);
+    gzFile in1 = gzopen(fn1.c_str(), "rb");
+    gzFile in2 = gzopen(fn2.c_str(), "rb");
 
     if (!in1) {
         std::cerr << "failed to open first file, abort!" << std::endl;
@@ -102,6 +179,14 @@ int main(int argc, char **argv)
     }
     if (!in2) {
         std::cerr << "failed to open second file, abort!" << std::endl;
+        return 1;
+    }
+    if (tseitin < 0) {
+        std::cerr << "tseitin variable negative, abort" << std::endl;
+        return 1;
+    }
+    if (randmom_drop < 0) {
+        std::cerr << "random_drop value negative, abort" << std::endl;
         return 1;
     }
 
@@ -116,22 +201,51 @@ int main(int argc, char **argv)
     std::cerr << "c Parsed formulas 1 with " << f1.nVars() << " vars and " << f1.clauses.size()
               << " and formulas 2 with " << f2.nVars() << " vars and " << f2.clauses.size() << std::endl;
 
+    if (randmom_drop > 0) {
+        srand(1234);
+        for (int i = 0; i < randmom_drop && f1.clauses.size() > 0; ++i) {
+            size_t p = rand() % f1.clauses.size();
+            f1.clauses[p] = f1.clauses.back();
+            f1.clauses.pop_back();
+        }
+    }
+
     Formula miter;
 
     Var maxV = f1.nVars() > f2.nVars() ? f1.nVars() : f2.nVars();
+    if (tseitin > 0) {
+        int offset = tseitin;
+        offset = maxV > tseitin ? maxV - tseitin : 0;
+        std::cerr << "c offset " << offset << " tseitin: " << tseitin << " maxV: " << maxV << std::endl;
+        assert(offset == 0 || f2.nVars() <= tseitin || f2.nVars() + offset > f1.nVars());
+
+        rewrite_variable_range(f2, tseitin, offset);
+
+        maxV = f1.nVars() > f2.nVars() ? f1.nVars() : f2.nVars();
+
+        while (f1.nVars() < maxV) f1.newVar();
+        while (f2.nVars() < maxV) f2.newVar();
+
+        exchange_definition_clauses(f1, f2, tseitin);
+    }
+
+    maxV = f1.nVars() > f2.nVars() ? f1.nVars() : f2.nVars();
     while (miter.nVars() < maxV) miter.newVar();
 
     std::cerr << "c Miter base formulas reserved " << miter.nVars() << " variables" << std::endl;
 
     generate_formula_miter(miter, f1, f2);
 
-    std::string fn1 = (argv[1]);
-    std::string fn2 = (argv[2]);
     std::size_t found = fn1.rfind("/");
     if (found != std::string::npos) fn1 = fn1.erase(0, found + 1);
     found = fn2.rfind("/");
     if (found != std::string::npos) fn2 = fn2.erase(0, found + 1);
-    print_formula(miter, fn1 + " and " + fn2);
+
+    std::stringstream s;
+    s << fn1 << " and " << fn2;
+    if (tseitin != 0) s << " with tseitin base variable " << tseitin;
+    if (randmom_drop) s << " with randomly dropping " << randmom_drop;
+    print_formula(miter, s.str());
 
     return 0;
 }
