@@ -54,3 +54,10 @@ check_unsat "$solver" "$TMPCNF"
 # Tseitin miters
 ../cnfmiter -t 4 amo-4-naive.cnf amo-4-eq.cnf > "$TMPCNF" 2> /dev/null
 check_unsat "$solver" "$TMPCNF"
+../cnfmiter -t 4 amo-4-eq.cnf amo-4-naive.cnf > "$TMPCNF" 2> /dev/null
+check_unsat "$solver" "$TMPCNF"
+
+../cnfmiter -t 7 amk-7-2-bdd.cnf amk-7-2-card.cnf > "$TMPCNF" 2> /dev/null
+check_unsat "$solver" "$TMPCNF"
+../cnfmiter -t 7 amk-7-2-card.cnf amk-7-2-bdd.cnf > "$TMPCNF" 2> /dev/null
+check_unsat "$solver" "$TMPCNF"
